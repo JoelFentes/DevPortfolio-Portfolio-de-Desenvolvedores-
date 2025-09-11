@@ -11,31 +11,6 @@
 - **SQLite/PostgreSQL** – Banco de dados relacional
 
 
-## ⚙️ Como Rodar o Projeto
-
-1. Clone este repositório:
-
-   ```bash
-   git clone https://github.com/JoelFentes/DevPortfolio-Portfolio-de-Desenvolvedore.git
-   cd DevPortfolio-Portfolio-de-Desenvolvedores
-
-2. Instale as dependências:
-  
-   ```bash
-   npm install
-
-
-3. Execute o servidor de desenvolvimento:
-
-   ```bash
-   npm run dev
-
-
-4. Abra o navegador e acesse:
-
-   ```bash
-   http://localhost:3000
-
 ## 📌 Funcionalidades
 
 - Cadastro e login de desenvolvedores
