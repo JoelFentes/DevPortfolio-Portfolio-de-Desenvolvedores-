@@ -37,6 +37,7 @@ export async function GET() {
     const user = await prisma.user.findUnique({
       where: { email: payload.email },
       select: {
+        id: true,
         name: true,
         email: true,
         profilePicture: true, // aqui o campo do profile picture
@@ -47,7 +48,10 @@ export async function GET() {
       return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 });
     }
 
-    return NextResponse.json({ user });
+    const { id, ...publicUser } = user;
+    const portfolio = await prisma.portfolio.findFirst({ where: { userId: id } });
+
+    return NextResponse.json({ user: publicUser, portfolio });
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });

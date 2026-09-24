@@ -1,331 +1,157 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
-import {
-    Box,
-    Typography,
-    Chip,
-    Link as MuiLink,
-    CircularProgress,
-    Grid,
-    TextField,
-    MenuItem,
-    Pagination,
-    Button,
-} from '@mui/material';
-import Image from 'next/image';
-import LayersIcon from '@mui/icons-material/Layers';
-import CodeIcon from '@mui/icons-material/Code';
-import theme from '@/theme';
-import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { Box, Button, Container, InputAdornment, MenuItem, Pagination, TextField, Typography } from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
+import EmptyBlock from '@/components/EmptyBlock';
+import PortfolioCard, { PortfolioCardSkeleton, isWide } from '@/components/PorfolioCard';
+import { Portfolio, displayName } from '@/types/portfolio';
 
-
-interface Portfolio {
-    id: string;
-    name: string;
-    bio: string;
-    stacks: string[];
-    techList: string[];
-    experience: string;
-    projectTitle: string;
-    projectDescription: string;
-    projectLink: string;
-    projectImage?: string | null;
-    github?: string | null;
-    linkedin?: string | null;
-    website?: string | null;
-}
+const PER_PAGE = 8;
 
 export default function DevsPage() {
-    const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+  const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-    const [searchName, setSearchName] = useState('');
-    const [selectedStack, setSelectedStack] = useState('');
-    const [selectedTech, setSelectedTech] = useState('');
-    const [currentPage, setCurrentPage] = useState(1);
+  const [searchName, setSearchName] = useState('');
+  const [selectedStack, setSelectedStack] = useState('');
+  const [selectedTech, setSelectedTech] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
 
-    const portfoliosPerPage = 4;
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/portfolio');
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        setPortfolios(data.portfolios || data);
+      } catch {
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
 
-    const router = useRouter();
+  const allStacks = useMemo(() => [...new Set(portfolios.flatMap((p) => p.stacks))].sort(), [portfolios]);
+  const allTechs = useMemo(() => [...new Set(portfolios.flatMap((p) => p.techList))].sort(), [portfolios]);
 
-
-    useEffect(() => {
-        const fetchPortfolios = async () => {
-            try {
-                const res = await fetch('/api/portfolio');
-                if (!res.ok) throw new Error('Erro ao buscar portfólios');
-                const data = await res.json();
-                setPortfolios(data.portfolios || data);
-            } catch (err) {
-                setError((err as Error).message);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchPortfolios();
-    }, []);
-
-    const allStacks = useMemo(() => {
-        const set = new Set<string>();
-        portfolios.forEach((p) => p.stacks.forEach((s) => set.add(s)));
-        return Array.from(set);
-    }, [portfolios]);
-
-    const allTechs = useMemo(() => {
-        const set = new Set<string>();
-        portfolios.forEach((p) => p.techList.forEach((t) => set.add(t)));
-        return Array.from(set);
-    }, [portfolios]);
-
-    const filteredPortfolios = useMemo(() => {
-        return portfolios.filter((p) => {
-            const matchesName = p.name.toLowerCase().includes(searchName.toLowerCase());
-            const matchesStack = selectedStack ? p.stacks.includes(selectedStack) : true;
-            const matchesTech = selectedTech ? p.techList.includes(selectedTech) : true;
-            return matchesName && matchesStack && matchesTech;
-        });
-    }, [portfolios, searchName, selectedStack, selectedTech]);
-
-    const totalPages = Math.ceil(filteredPortfolios.length / portfoliosPerPage);
-    const paginatedPortfolios = filteredPortfolios.slice(
-        (currentPage - 1) * portfoliosPerPage,
-        currentPage * portfoliosPerPage
+  const filtered = useMemo(() => {
+    const q = searchName.trim().toLowerCase();
+    return portfolios.filter((p) =>
+      displayName(p).toLowerCase().includes(q) &&
+      (!selectedStack || p.stacks.includes(selectedStack)) &&
+      (!selectedTech || p.techList.includes(selectedTech)),
     );
+  }, [portfolios, searchName, selectedStack, selectedTech]);
 
-    if (loading) {
-        return (
-            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10 }}>
-                <CircularProgress />
-            </Box>
-        );
-    }
+  const totalPages = Math.ceil(filtered.length / PER_PAGE);
+  const paginated = filtered.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE);
+  const hasFilters = Boolean(searchName || selectedStack || selectedTech);
 
-    if (error) {
-        return (
-            <Typography textAlign="center" color="error" mt={10}>
-                {error}
+  const clearFilters = () => {
+    setSearchName('');
+    setSelectedStack('');
+    setSelectedTech('');
+    setCurrentPage(1);
+  };
+
+  return (
+    <Box sx={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
+      <Navbar />
+
+      <Container component="main" id="conteudo" maxWidth="lg" sx={{ pt: { xs: 6, md: 9 }, pb: 10 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', gap: 3, flexWrap: 'wrap', mb: 4 }}>
+          <Box>
+            <Typography component="h1" className="rise" sx={{ fontSize: 'clamp(34px, 5vw, 56px)', fontWeight: 600, letterSpacing: '-0.035em', lineHeight: 1.05 }}>
+              Explore os devs
             </Typography>
-        );
-    }
-
-    return (
-        <Box sx={{
-            height: '100%',
-            width: '100%',
-            mx: 'auto',
-            p: 6,
-            bgcolor: 'text.secondary',
-        }}>
-            <Typography variant="h4" color='text.primary' fontWeight="bold" mb={4} textAlign="start">
-                Descubra os Devs através dos seus portfólios
+            <Typography className="rise" style={{ ['--i' as string]: 1 }} sx={{ color: 'text.secondary', mt: 1.5, maxWidth: '48ch' }}>
+              Filtre por stack ou tecnologia e abra o portfólio de quem combina com o que você procura.
             </Typography>
-
-            {/* Filtros */}
-            <Box mb={4} display="flex" gap={2} >
-                <TextField
-                    label="Buscar por Nome"
-                    value={searchName}
-                    onChange={(e) => {
-                        setSearchName(e.target.value);
-                        setCurrentPage(1);
-                    }}
-                    variant="outlined"
-                    focused
-                    color="primary"
-                />
-
-                <TextField
-                    sx={{ minWidth: 200, }}
-                    select
-                    label="Filtrar por Stack"
-                    value={selectedStack}
-                    onChange={(e) => {
-                        setSelectedStack(e.target.value);
-                        setCurrentPage(1);
-                    }}
-                    variant="outlined"
-                    focused
-                    color="primary"
-                >
-                    <MenuItem value="">Todas</MenuItem>
-                    {allStacks.map((stack) => (
-                        <MenuItem key={stack} value={stack}>{stack}</MenuItem>
-                    ))}
-                </TextField>
-
-                <TextField
-                    sx={{ minWidth: 200 }}
-                    select
-                    label="Filtrar por Tech"
-                    value={selectedTech}
-                    onChange={(e) => {
-                        setSelectedTech(e.target.value);
-                        setCurrentPage(1);
-                    }}
-                    variant="outlined"
-                    focused
-                    color="primary"
-                >
-                    <MenuItem value="">Todas</MenuItem>
-                    {allTechs.map((tech) => (
-                        <MenuItem key={tech} value={tech}>{tech}</MenuItem>
-                    ))}
-                </TextField>
-            </Box>
-
-            {/* Lista de Portfolios */}
-            <Grid
-                container
-                spacing={1}
-                sx={{
-                    flexGrow: 1,
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(2, 1fr)',
-                    gridTemplateRows: 'repeat(2, 1fr)',
-                    gap: 2,
-                    overflow: 'auto',
-                }}
-            >
-                {paginatedPortfolios.length === 0 ? (
-                    <Typography color="text.secondary">Nenhum portfolio encontrado.</Typography>
-                ) : (
-                    paginatedPortfolios.map((portfolio) => (
-                        <Box
-                            key={portfolio.id}
-                            onClick={() => router.push(`/devs/${portfolio.id}`)}
-                            sx={{
-                                p: 3,
-                                color: 'text.primary',
-                                borderRadius: 3,
-                                borderColor: 'primary.main',
-                                borderWidth: 1,
-                                boxShadow: 3,
-                                display: 'flex',
-                                flexDirection: 'column',
-                                justifyContent: 'space-between',
-                                height: '100%',
-                                overflow: 'hidden',
-                                cursor: 'pointer',
-
-                            }}
-                        >
-                            <Box>
-                                <Typography variant="h5" fontWeight="bold" gutterBottom noWrap>
-                                    {portfolio.name}
-                                </Typography>
-                                <Typography
-                                    variant="body2"
-                                    mb={2}
-                                    sx={{
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        whiteSpace: 'normal',
-                                    }}
-                                >
-                                    {portfolio.bio}
-                                </Typography>
-
-                                {/* Stacks */}
-                                <Box mb={2} sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-                                    {portfolio.stacks.map((stack, index) => (
-                                        <Chip
-                                            key={index}
-                                            label={stack}
-                                            size="medium"
-                                            icon={<LayersIcon sx={{ fontSize: 24, color: theme.palette.text.secondary }} />}
-                                            sx={{
-                                                fontWeight: '400',
-                                                backgroundColor: theme.palette.primary.main,
-                                                color: theme.palette.text.secondary,
-                                            }}
-                                        />
-                                    ))}
-                                </Box>
-
-                                {/* Tecnologias */}
-                                <Box mb={2} sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                                    {portfolio.techList.map((tech, index) => (
-                                        <Chip
-                                            key={index}
-                                            label={tech}
-                                            size="medium"
-                                            icon={<CodeIcon sx={{ fontSize: 24, color: theme.palette.text.secondary }} />}
-                                            sx={{
-                                                fontWeight: '400',
-                                                backgroundColor: theme.palette.primary.main,
-                                                color: theme.palette.text.secondary,
-                                            }}
-                                        />
-                                    ))}
-                                </Box>
-
-
-                                {/* Projeto */}
-                                {portfolio.projectTitle && (
-                                    <Box mb={2}>
-                                        <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                                            {portfolio.projectTitle}
-                                        </Typography>
-                                        <Typography
-                                            variant="body2"
-                                            sx={{
-                                                maxHeight: 50,
-                                                overflow: 'hidden',
-                                                textOverflow: 'ellipsis',
-                                                whiteSpace: 'normal',
-                                            }}
-                                            mb={1}
-                                        >
-                                            {portfolio.projectDescription}
-                                        </Typography>
-
-                                    </Box>
-                                )}
-                            </Box>
-
-                            {/* Contatos */}
-                            <Box
-                                mt="auto"
-                                sx={{ display: 'flex', justifyContent: 'space-around', pt: 2, borderTop: '1px solid', borderColor: 'divider' }}
-                            >
-                                {portfolio.github && (
-                                    <MuiLink href={portfolio.github} target="_blank" sx={{ fontSize: 13, fontWeight: 'medium' }}>
-                                        GitHub
-                                    </MuiLink>
-                                )}
-                                {portfolio.linkedin && (
-                                    <MuiLink href={portfolio.linkedin} target="_blank" sx={{ fontSize: 13, fontWeight: 'medium' }}>
-                                        LinkedIn
-                                    </MuiLink>
-                                )}
-                                {portfolio.website && (
-                                    <MuiLink href={portfolio.website} target="_blank" sx={{ fontSize: 13, fontWeight: 'medium' }}>
-                                        Website
-                                    </MuiLink>
-                                )}
-                            </Box>
-                        </Box>
-
-                    ))
-                )}
-            </Grid>
-
-            {totalPages > 1 && (
-                <Box mt={3} display="flex" justifyContent="center">
-                    <Pagination
-                        count={totalPages}
-                        page={currentPage}
-                        onChange={(_, page) => setCurrentPage(page)}
-                        color="primary"
-                        size="large"
-                        showFirstButton
-                        showLastButton
-                    />
-                </Box>
-            )}
+          </Box>
+          {!loading && !error && (
+            <Typography sx={{ fontFamily: 'var(--font-geist-mono)', fontSize: 13, color: 'text.secondary' }} aria-live="polite">
+              {filtered.length} {filtered.length === 1 ? 'resultado' : 'resultados'}
+            </Typography>
+          )}
         </Box>
 
-    );
+        {/* Filtros */}
+        <Box
+          role="search"
+          sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '2fr 1fr 1fr auto' }, mb: 4, alignItems: 'center' }}
+        >
+          <TextField
+            label="Buscar por nome"
+            value={searchName}
+            onChange={(e) => { setSearchName(e.target.value); setCurrentPage(1); }}
+            size="small"
+            sx={{ gridColumn: { sm: 'span 2', md: 'auto' } }}
+            slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> } }}
+          />
+          <TextField
+            select
+            label="Stack"
+            value={selectedStack}
+            onChange={(e) => { setSelectedStack(e.target.value); setCurrentPage(1); }}
+            size="small"
+          >
+            <MenuItem value="">Todas</MenuItem>
+            {allStacks.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+          </TextField>
+          <TextField
+            select
+            label="Tecnologia"
+            value={selectedTech}
+            onChange={(e) => { setSelectedTech(e.target.value); setCurrentPage(1); }}
+            size="small"
+          >
+            <MenuItem value="">Todas</MenuItem>
+            {allTechs.map((t) => <MenuItem key={t} value={t}>{t}</MenuItem>)}
+          </TextField>
+          <Button onClick={clearFilters} disabled={!hasFilters} sx={{ color: 'text.secondary', whiteSpace: 'nowrap' }}>
+            Limpar filtros
+          </Button>
+        </Box>
+
+        {error ? (
+          <EmptyBlock title="Não foi possível carregar os portfólios." text="Verifique sua conexão e recarregue a página." />
+        ) : !loading && paginated.length === 0 ? (
+          <EmptyBlock
+            title={hasFilters ? 'Nenhum dev com esses filtros.' : 'Nenhum portfólio publicado ainda.'}
+            text={hasFilters ? 'Tente outra stack ou tecnologia, ou limpe os filtros.' : 'Seja o primeiro a publicar o seu.'}
+            action={
+              hasFilters
+                ? <Button onClick={clearFilters} variant="outlined" color="primary">Limpar filtros</Button>
+                : <Button component={Link} href="/createPortfolio" variant="contained" color="secondary">Criar meu portfólio</Button>
+            }
+          />
+        ) : (
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 2 }}>
+            {loading
+              ? [0, 1, 2, 3].map((i) => <PortfolioCardSkeleton key={i} wide={isWide(i)} />)
+              : paginated.map((p, i) => <PortfolioCard key={p.id} portfolio={p} wide={isWide(i)} index={i} />)}
+          </Box>
+        )}
+
+        {totalPages > 1 && (
+          <Box sx={{ mt: 5, display: 'flex', justifyContent: 'center' }}>
+            <Pagination
+              count={totalPages}
+              page={currentPage}
+              onChange={(_, page) => { setCurrentPage(page); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              shape="rounded"
+            />
+          </Box>
+        )}
+      </Container>
+
+      <Footer />
+    </Box>
+  );
 }

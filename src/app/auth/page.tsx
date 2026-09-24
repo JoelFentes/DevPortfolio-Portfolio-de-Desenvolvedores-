@@ -1,15 +1,16 @@
 'use client';
 
-import CustomTextField from '@/components/CustomTextFieldAuth';
-import {
-  Box,
-  Button,
-  Typography,
-  Link,
-} from '@mui/material';
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Alert, Box, Button, CircularProgress, Container, TextField, Typography } from '@mui/material';
+import { toast } from 'sonner';
 import { useAuth } from '@/app/context/AuthContext';
+import { Logo } from '@/components/Navbar';
+
+type Errors = Partial<Record<'name' | 'email' | 'password', string>>;
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function AuthPage() {
   const router = useRouter();
@@ -19,137 +20,122 @@ export default function AuthPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [errors, setErrors] = useState<Errors>({});
+  const [formError, setFormError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const validate = (): Errors => {
+    const e: Errors = {};
+    if (isSignup && name.trim().length < 2) e.name = 'Informe seu nome.';
+    if (!EMAIL_RE.test(email)) e.email = 'Informe um e-mail válido.';
+    if (password.length < (isSignup ? 6 : 1)) e.password = isSignup ? 'Use pelo menos 6 caracteres.' : 'Informe sua senha.';
+    return e;
+  };
+
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    setFormError('');
+    const found = validate();
+    setErrors(found);
+    if (Object.keys(found).length) return;
 
-    const endpoint = isSignup ? '/api/auth/signup' : '/api/auth/login';
+    setSubmitting(true);
+    try {
+      const res = await fetch(isSignup ? '/api/auth/signup' : '/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(isSignup ? { name, email, password } : { email, password }),
+      });
+      const data = await res.json().catch(() => ({}));
 
-    const body = isSignup
-      ? { name, email, password }
-      : { email, password };
+      if (!res.ok) {
+        setFormError(data.error || 'Não foi possível entrar. Tente novamente.');
+        return;
+      }
 
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      alert(data.error || 'Erro');
-      return;
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      setUser(data.user);
+      toast.success(isSignup ? 'Conta criada. Agora monte seu portfólio.' : `Bem-vindo de volta, ${data.user?.name?.split(' ')[0] ?? ''}.`);
+      router.push(isSignup ? '/createPortfolio' : '/');
+    } catch {
+      setFormError('Falha de conexão. Verifique sua internet e tente novamente.');
+    } finally {
+      setSubmitting(false);
     }
+  };
 
-    // Salva token e usuário
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data.user));
-    setUser(data.user);
-
-    router.push('/');
+  const switchMode = () => {
+    setIsSignup((v) => !v);
+    setErrors({});
+    setFormError('');
   };
 
   return (
-    <Box
-      sx={{
-        width: '100vw',
-        height: '100vh',
-        bgcolor: 'secondary.main',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-      }}
-    >
-      <Box
-        component="form"
-        onSubmit={handleSubmit}
-        sx={{
-          width: '27.5%',
-          height: 'auto',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 2,
-          bgcolor: 'background.default',
-          color: 'text.secondary',
-          p: 4,
-          borderRadius: 2,
-          boxShadow: 3,
-        }}
-      >
-        <Typography align="center" fontFamily="Poppins" variant="h6" color="text.primary" fontSize="22px">
-          Bem-vindo ao DevPortfolio!
-        </Typography>
+    <Box sx={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
+      <Container maxWidth="lg" sx={{ height: 64, display: 'flex', alignItems: 'center' }}>
+        <Logo />
+      </Container>
 
-        <Typography align="center" variant="subtitle2" color="text.primary" fontWeight="light">
-          {isSignup ? 'Preencha os dados para se cadastrar.' : 'Faça login para continuar.'}
-        </Typography>
+      <Box component="main" id="conteudo" sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', px: 2, py: 6 }}>
+        <Box
+          component="form"
+          noValidate
+          onSubmit={handleSubmit}
+          className="rise"
+          sx={{
+            width: '100%', maxWidth: 400, display: 'grid', gap: 2.5,
+            bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', borderRadius: '20px',
+            p: { xs: 3, sm: 4 },
+          }}
+        >
+          <Box>
+            <Typography component="h1" sx={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.03em' }}>
+              {isSignup ? 'Crie sua conta' : 'Entre na sua conta'}
+            </Typography>
+            <Typography sx={{ color: 'text.secondary', mt: 0.5, fontSize: 15 }}>
+              {isSignup ? 'Leva menos de um minuto.' : 'Para editar e publicar seu portfólio.'}
+            </Typography>
+          </Box>
 
-        {isSignup && (
-          <CustomTextField
-            id="name"
-            label="Nome"
-            type="text"
-            autoComplete="name"
-            required
-            fullWidth
-            value={name}
-            onChange={(e: any) => setName(e.target.value)}
+          {formError && <Alert severity="error" variant="outlined">{formError}</Alert>}
+
+          {isSignup && (
+            <TextField
+              id="name" label="Nome" autoComplete="name" value={name}
+              onChange={(e) => setName(e.target.value)}
+              error={!!errors.name} helperText={errors.name} fullWidth
+            />
+          )}
+          <TextField
+            id="email" label="E-mail" type="email" autoComplete="email" value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            error={!!errors.email} helperText={errors.email} fullWidth
           />
-        )}
+          <TextField
+            id="password" label="Senha" type="password" autoComplete={isSignup ? 'new-password' : 'current-password'} value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            error={!!errors.password} helperText={errors.password} fullWidth
+          />
 
-        <CustomTextField
-          id="email"
-          label="Email"
-          type="email"
-          autoComplete="email"
-          required
-          fullWidth
-          value={email}
-          onChange={(e: any) => setEmail(e.target.value)}
-        />
-        <CustomTextField
-          id="password"
-          label="Senha"
-          type="password"
-          autoComplete="current-password"
-          required
-          fullWidth
-          value={password}
-          onChange={(e: any) => setPassword(e.target.value)}
-        />
+          <Button type="submit" variant="contained" color="primary" size="large" disabled={submitting} sx={{ mt: 0.5, height: 46 }}>
+            {submitting ? <CircularProgress size={20} color="inherit" aria-label="Enviando" /> : isSignup ? 'Criar conta' : 'Entrar'}
+          </Button>
 
+          <Typography sx={{ fontSize: 14, color: 'text.secondary', textAlign: 'center' }}>
+            {isSignup ? 'Já tem conta?' : 'Ainda não tem conta?'}{' '}
+            <Box
+              component="button"
+              type="button"
+              onClick={switchMode}
+              sx={{ all: 'unset', cursor: 'pointer', color: 'text.primary', fontWeight: 500, textDecoration: 'underline', textUnderlineOffset: 3, '&:focus-visible': { outline: '2px solid', outlineColor: 'secondary.main', outlineOffset: 2, borderRadius: '4px' } }}
+            >
+              {isSignup ? 'Entrar' : 'Criar conta'}
+            </Box>
+          </Typography>
+        </Box>
 
-        <Link
-          component="button"
-          onClick={() => setIsSignup(!isSignup)}
-          underline="none"
-          sx={{
-            textAlign: 'center',
-            color: 'text.primary',
-            fontWeight: 'light',
-            fontSize: '14px',
-            mt: 1,
-          }}
-        >
-          {isSignup ? 'Já tem uma conta? Faça login.' : 'Ainda não tem uma conta? Crie uma!'}
-        </Link>
-
-        <Button
-          type="submit"
-          variant="contained"
-          fullWidth
-          sx={{
-            mt: 2,
-            bgcolor: 'text.primary',
-            color: 'background.default',
-            fontWeight: 'light',
-            fontSize: '16px',
-            '&:hover': { bgcolor: 'secondary.main' },
-          }}
-        >
-          {isSignup ? 'Cadastrar' : 'Entrar'}
-        </Button>
+        <Button component={Link} href="/" sx={{ color: 'text.secondary', mt: 3 }}>← Voltar para o início</Button>
       </Box>
     </Box>
   );

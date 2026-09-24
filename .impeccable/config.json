@@ -1,0 +1,20 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "geist",
+        "createdAt": "2026-09-24T12:35:00.058Z",
+        "reason": "user confirmed: approved proposta.html design with Geist"
+      },
+      {
+        "rule": "overused-font",
+        "value": "geist mono",
+        "createdAt": "2026-09-24T12:35:00.327Z",
+        "reason": "user confirmed: approved proposta.html design with Geist Mono"
+      }
+    ]
+  }
+}

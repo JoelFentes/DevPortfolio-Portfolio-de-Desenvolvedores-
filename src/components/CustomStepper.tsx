@@ -1,97 +1,30 @@
-import {
-    Stepper,
-    Step,
-    StepLabel,
-    StepConnector,
-    styled,
-    stepConnectorClasses,
-    useTheme,
-    Theme,
-} from '@mui/material';
-
-// Conector customizado (opcional)
-const CustomConnector = styled(StepConnector)(({ theme }) => ({
-    [`&.${stepConnectorClasses.alternativeLabel}`]: {
-        top: 12,
-    },
-    [`&.${stepConnectorClasses.active}`]: {
-        [`& .${stepConnectorClasses.line}`]: {
-            backgroundColor: theme.palette.secondary.main,
-        },
-    },
-    [`&.${stepConnectorClasses.completed}`]: {
-        [`& .${stepConnectorClasses.line}`]: {
-            backgroundColor: theme.palette.secondary.main,
-        },
-    },
-    [`& .${stepConnectorClasses.line}`]: {
-        width: '100%',
-        height: 2,
-        border: 0,
-        backgroundColor: theme.palette.secondary.main,
-        borderRadius: 1,
-    },
-}));
-
-const customLabelStyles = (theme: Theme) => ({
-    '& .MuiStepLabel-label': {
-        color: theme.palette.text.primary,
-        fontSize: 14,
-        fontWeight: 400,
-        '&.Mui-active': {
-            color: theme.palette.text.primary,
-            fontWeight: 500,
-        },
-        '&.Mui-completed': {
-            color: theme.palette.secondary.main,
-        },
-    },
-});
-
-const customStepIconStyles = (theme: Theme) => ({
-    '& .MuiStepIcon-root': {
-        color: theme.palette.text.primary,
-        borderRadius: '50%',
-        width: 24,
-        height: 24,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    '& .MuiStepIcon-root.Mui-active': {
-        color: theme.palette.secondary.main,
-        borderRadius: '50%',
-    },
-    '& .MuiStepIcon-root.Mui-completed': {
-        color: theme.palette.secondary.main,
-        borderRadius: '50%',
-    },
-});
+import { Box } from '@mui/material';
 
 type CustomStepperProps = {
-    activeStep: number;
-    steps: string[];
+  activeStep: number;
+  steps: string[];
 };
 
+/** Progresso em segmentos: legível em qualquer largura, sem rótulos espremidos. */
 export default function CustomStepper({ activeStep, steps }: CustomStepperProps) {
-    const theme = useTheme();
-
-    return (
-        <Stepper
-            activeStep={activeStep}
-            alternativeLabel
-            connector={<CustomConnector />}
+  return (
+    <Box
+      component="ol"
+      aria-label={`Etapa ${activeStep + 1} de ${steps.length}: ${steps[activeStep]}`}
+      sx={{ listStyle: 'none', p: 0, m: 0, display: 'grid', gridTemplateColumns: `repeat(${steps.length}, 1fr)`, gap: 0.75 }}
+    >
+      {steps.map((label, i) => (
+        <Box component="li" key={label} aria-current={i === activeStep ? 'step' : undefined} title={label}>
+          <Box
             sx={{
-                mt: 2,
-                mb: 2,
-                ...customStepIconStyles(theme),
+              height: 4,
+              borderRadius: 2,
+              bgcolor: i <= activeStep ? 'secondary.main' : 'action.selected',
+              transition: 'background-color .3s ease',
             }}
-        >
-            {steps.map((label) => (
-                <Step key={label}>
-                    <StepLabel sx={customLabelStyles(theme)}>{label}</StepLabel>
-                </Step>
-            ))}
-        </Stepper>
-    );
+          />
+        </Box>
+      ))}
+    </Box>
+  );
 }
