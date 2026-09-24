@@ -61,13 +61,16 @@ export class PortfolioRepository {
   }
 
   async findAll() {
-    return prisma.portfolio.findMany();
+    return prisma.portfolio.findMany({
+      include: { user: { select: { name: true, profilePicture: true } } },
+      orderBy: { updatedAt: "desc" },
+    });
   }
 
   async getById(id: string) {
   return prisma.portfolio.findUnique({
   where: { id },
-  include: { user: true }, 
+  include: { user: { select: { name: true, profilePicture: true } } },
 });
 
 }

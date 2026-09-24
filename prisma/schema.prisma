@@ -1,0 +1,41 @@
+// Reconstruído a partir de src/repositories e src/usecases.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String     @id @default(cuid())
+  name           String
+  email          String     @unique
+  password       String
+  profilePicture String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  portfolio      Portfolio?
+}
+
+model Portfolio {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name               String   @default("")
+  bio                String
+  email              String   @default("")
+  stacks             String[]
+  techList           String[]
+  github             String   @default("")
+  linkedin           String   @default("")
+  website            String   @default("")
+  experience         String   @default("")
+  projectTitle       String   @default("")
+  projectDescription String   @default("")
+  projectLink        String   @default("")
+  projectImage       String   @default("")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
