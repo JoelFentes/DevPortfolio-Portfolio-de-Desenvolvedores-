@@ -19,7 +19,7 @@
     "@prisma/client": "^6.8.2",
     "bcryptjs": "^3.0.2",
     "jsonwebtoken": "^9.0.2",
-    "next": "15.3.2",
+    "next": "15.3.8",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "sonner": "^2.0.8"
